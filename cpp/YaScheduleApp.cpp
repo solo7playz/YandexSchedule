@@ -1,8 +1,6 @@
 ﻿#include "YaScheduleApp.h"
 
-
 using json = nlohmann::json;
-
 
 YaScheduleApp::YaScheduleApp(std::string openWeatherApiKey, std::string yaScheduleApiKey,
 	std::string cityFrom, std::string cityTo) {
@@ -37,35 +35,6 @@ std::vector <std::string> YaScheduleApp::getLatLon(std::string city) {
 	return latLon;
 }
 
-std::string cinDate() {
-	std::string dateYear;
-	std::string dateMonth;
-	std::string dateDay;
-	std::cout << "print Year: ";std::cin >> dateYear;
-	std::string date = dateYear + "-";
-	std::cout << "print Month: ";std::cin >> dateMonth;
-	if (stoi(dateMonth) < 10) {
-		date += '0' + dateMonth + "-";
-	}
-	else {
-		date += dateMonth + "-";
-	}
-	std::cout << "print Day: ";std::cin >> dateDay;
-	if (stoi(dateDay) < 10) {
-		date += '0' + dateDay;
-	}
-	else {
-		date += dateDay;
-	}
-	return date;
-}
-
-std::string cinTransport() {
-	std::string typeOfTransport;
-	std::cout << "types of transport: 1.plane\n 2.train\n 3.suburban\n 4.bus\n 5.water\n 6.helicopter\n";
-	std::cout << "print type of transport: ";std::cin >> typeOfTransport;
-	return typeOfTransport;
-}
 
 std::string YaScheduleApp::getCityCode(std::vector <std::string> latLon) {
 	std::string request = this->yaCityCodeRequest;
@@ -77,30 +46,90 @@ std::string YaScheduleApp::getCityCode(std::vector <std::string> latLon) {
 }
 
 
-json YaScheduleApp::getScheduleBetweenCities() {
-	std::string request = this->yaScheduleRequest;
-	request += "apikey=" + this->yaScheduleApiKey;
-	request += "&from=" + this->getCityCode(this->getLatLon(this->cityFrom));
-	request += "&to=" + this->getCityCode(this->getLatLon(this->cityTo));
-	request += "&lang=ru_RU&page=1&date=" + cinDate();
-	request += "&transport_types=" + cinTransport();
-	return this->makeRequest(this->yandexScheduleClient, request);
+std::vector <std::vector <std::map <std::string, std::string>>> YaScheduleApp::getScheduleBetweenCities(std::string date) {
+	if (this->schedule.size() != 0 && date == "null") {
+		return this->schedule;
+	}
+	else {
+		this->schedule.clear();
+		std::string request = this->yaScheduleRequest;
+		request += "apikey=" + this->yaScheduleApiKey;
+		request += "&from=" + this->getCityCode(this->getLatLon(this->cityFrom));
+		request += "&to=" + this->getCityCode(this->getLatLon(this->cityTo));
+		if (date != "null") {
+			request += "&date=" + date;
+		}
+		json result = this->makeRequest(this->yandexScheduleClient, request);
+		std::map <std::string, std::string> raceTitle;
+		std::map <std::string, std::string> raceNumber;
+		std::map <std::string, std::string> departureSattionTitle;
+		std::map <std::string, std::string> departureSattionCode;
+		std::map <std::string, std::string> arrivalSattionTitle;
+		std::map <std::string, std::string> arrivalSattionCode;
+		std::map <std::string, std::string> transportType;
+		std::map <std::string, std::string> departureDate;
+		std::map <std::string, std::string> arrivalDate;
+		std::map <std::string, std::string> codeTransportCompany;
+		std::map <std::string, std::string> price;
+		for (int i = 0; i < result["segments"].size(); i++) {
+			std::vector <std::map <std::string, std::string>> race{};
+			raceTitle["Race Title"] = result["segments"][i]["thread"]["title"].get<std::string>();
+			raceNumber["Race Number"] = result["segments"][i]["thread"]["number"].get<std::string>();
+			departureSattionTitle["Departure Station Title"] = result["segments"][i]["from"]["title"].get<std::string>();
+			departureSattionCode["Departure Station Code"] = result["segments"][i]["from"]["code"].get<std::string>();
+			arrivalSattionTitle["Arrival Station Title"] = result["segments"][i]["to"]["title"].get<std::string>();
+			arrivalSattionCode["Arrival Station Code"] = result["segments"][i]["to"]["code"].get<std::string>();
+			transportType["Transport Type"] = result["segments"][i]["from"]["transport_type"].get<std::string>();
+			departureDate["Departure Date"] = result["segments"][i]["departure"].get<std::string>();
+			arrivalDate["Arrival Date"] = result["segments"][i]["arrival"].get<std::string>();
+			codeTransportCompany["Transport Company Code"] = result["segments"][i]["thread"]["carrier"]["code"].get<std::string>();
+			price["Price"] = std::to_string(result["segments"][i]["tickets_info"]["places"][0]["prices"]["whole"].get<int>() + ',' + result["segments"][i]["tickets_info"]["places"][0]["prices"]["cents"].get<int>());
+			race.push_back(raceTitle);
+			race.push_back(raceNumber);
+			race.push_back(departureSattionTitle);
+			race.push_back(departureSattionCode);
+			race.push_back(arrivalSattionTitle);
+			race.push_back(arrivalSattionCode);
+			race.push_back(transportType);
+			race.push_back(departureDate);
+			race.push_back(arrivalDate);
+			race.push_back(codeTransportCompany);
+			race.push_back(price);
+			this->schedule.push_back(race);
+			raceTitle.erase("Race Title");
+			raceNumber.erase("Race Number");
+			departureSattionTitle.erase("Departure Station Title");
+			departureSattionCode.erase("Departure Station Code");
+			arrivalSattionTitle.erase("Arrival Station Title");
+			transportType.erase("Transport Type");
+			departureDate.erase("Departure Date");
+			arrivalDate.erase("Arrival Date");
+			codeTransportCompany.erase("Transport Company Code");
+			price.erase("Price");
+		}
+		return this->schedule;
+	}
 }
 
-//json YaScheduleApp::getStationsFrom(std::string city) {
-//	std::string request = this->yaScheduleRequest;
-//	request += "apikey=" + YA_API_KEY;
-//	request += "&format=json&lat=" + YaScheduleApp::getLatLon(city)[0];
-//	request += "&lng=" + YaScheduleApp::getLatLon(city)[1];
-//	request += "&distance=50&lang=ru_RU";
-//	return this->YaScheduleApp::makeRequest(this->yandexScheduleClient, request);
-//}
-//json YaScheduleApp::getStationsTo(std::string city) {
-//	std::string request = this->yaScheduleRequest;
-//	request += "apikey=" + YA_API_KEY;
-//	request += "&format=json&lat=" + YaScheduleApp::getLatLon(city)[0];
-//	request += "&lng=" + YaScheduleApp::getLatLon(city)[1];
-//	request += "&distance=50&lang=ru_RU";
-//	return this->YaScheduleApp::makeRequest(this->yandexScheduleClient, request);
-//}
-//
+
+std::vector <std::vector <std::map <std::string, std::string>>> YaScheduleApp::findScheduleByTransport(std::string transport) {
+	std::vector <std::vector <std::map <std::string, std::string>>> scheduleByTransport;
+	for (int i = 0; i < this->schedule.size(); i++) {
+		if (this->schedule[i][6]["Transport Type"] == transport) {
+			scheduleByTransport.push_back(this->schedule[i]);
+		}
+	}
+	return scheduleByTransport;
+}
+
+
+std::vector <std::vector <std::map <std::string, std::string>>> YaScheduleApp::getScheduleByTransport(std::string transport, std::string date) {
+	if (this->schedule.size() != 0 && date == "null") {
+		return this->findScheduleByTransport(transport);
+	}
+	else {
+		this->getScheduleBetweenCities(date);
+		return this->findScheduleByTransport(transport);
+	}
+}
+

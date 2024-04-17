@@ -2,8 +2,8 @@
 #include <string>
 #include <httplib.h>
 #include <nlohmann/json.hpp>
-#include <iostream>
-#include "Main.cpp"
+
+
 
 class YaScheduleApp {
 	httplib::Client* openWeatherClient;
@@ -15,13 +15,16 @@ class YaScheduleApp {
 	std::string yaScheduleRequest = "/v3.0/search/?";
 	std::string openWeatherApiKey;
 	std::string yaScheduleApiKey;
+	std::vector <std::vector <std::map <std::string, std::string>>> schedule;
 public:
 	YaScheduleApp(std::string openWeatherApiKey, std::string yaScheduleApiKey,
 		std::string cityFrom, std::string cityTo);
 
-	nlohmann::json getScheduleBetweenCities();
-	//nlohmann::json getStationsFrom(std::string city);
-	//nlohmann::json getStationsTo(std::string city);
+	std::vector <std::vector <std::map <std::string, std::string>>> getScheduleBetweenCities(std::string date);
+
+	std::vector <std::vector <std::map <std::string, std::string>>> getScheduleByTransport(std::string transport, std::string date);
+
+
 private:
 	nlohmann::json makeRequest(httplib::Client* client, std::string request);
 
@@ -29,7 +32,5 @@ private:
 
 	std::string getCityCode(std::vector <std::string> latLon);
 
-	std::string cinDate();
-
-	std::string cinTransport();
+	std::vector <std::vector <std::map <std::string, std::string>>> findScheduleByTransport(std::string transport);
 };
